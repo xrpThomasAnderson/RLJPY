@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XRPL DEX 实时订单簿</title>
+  <script src="https://unpkg.com/xrpl@2.14.0/build/xrpl-latest-min.js" integrity="sha384-J7PqxLCqaHM/pbIDWeW/yXzoVfDsXFxA6Y1uyZ9dQBN1OJ2OCDVcxa82moQX9ecX" crossorigin="anonymous"></script>
+  <style>
+    * {
+      box-sizing: border-box;
+    }
+    
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      background-color: #131722; 
+      color: #d1d4dc;
+      margin: 0;
+      padding: 20px;
+    }
+    
+    h1 {
+      text-align: center;
+      color: #fff;
+      font-size: 24px;
+      margin-bottom: 20px;
+    }
+    
+    .main-wrapper {
+      width: 100%;
+      max-width: 1280px; 
+      margin: 0 auto;
+    }
+
+    .config-card {
+      background: #1e222d;
+      padding: 20px;
+      border-radius: 8px;
+      margin-bottom: 20px;
+      display: flex;
+      gap: 15px;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      width: 100%; 
+    }
+    
+    .form-group-issuer {
+      flex: 2; 
+      min-width: 250px;
+    }
+    .form-group-currency {
+      flex: 1;
+      min-width: 120px;
+    }
+    .form-group-address {
+      flex: 2;
+      min-width: 250px;
+    }
+    
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-size: 13px;
+      color: #8b93a6;
+    }
+    
+    .form-group input {
+      width: 100%;
+      padding: 10px;
+      background: #2a2e39;
+      border: 1px solid #363c4e;
+      color: #fff;
+      border-radius: 4px;
+      font-family: monospace;
+      outline: none;
+    }
+    
+    .form-group input:focus {
+      border-color: #2962ff;
+    }
+
+    button {
+      background-color: #2962ff;
+      color: white;
+      border: none;
+      padding: 10px 24px;
+      border-radius: 4px;
+      cursor: pointer;
+      font-weight: bold;
+      height: 38px;
+      transition: background 0.2s;
+      white-space: nowrap; 
+    }
+    
+    button:hover { background-color: #1e4bd8; }
+    button:disabled { background-color: #363c4e; cursor: not-allowed; }
+
+    /* 🌟 修改点：开启 flex-wrap，允许屏幕小的时候盘口上下堆叠 */
+    .orderbook-container {
+      display: flex;
+      flex-wrap: wrap; 
+      gap: 20px;
+      width: 100%; 
+    }
+    
+    .book-panel {
+      /* 🌟 修改点：设定基础宽度，低于 480px 会自动把另一个挤到下一行 */
+      flex: 1 1 480px; 
+      background: #1e222d;
+      border-radius: 8px;
+      padding: 15px 15px;
+      overflow-x: auto; 
+    }
+    
+    .book-title {
+      font-size: 16px;
+      font-weight: bold;
+      margin-bottom: 15px;
+      padding-bottom: 10px;
+      border-bottom: 1px solid #363c4e;
+    }
+    .title-buy { color: #0ecb81; }
+    .title-sell { color: #f6465d; }
+    
+    table {
+      width: 100%;
+      /* 🌟 修改点：将内部表格最小极限宽度调小，配合稍小的字体 */
+      min-width: 480px; 
+      table-layout: fixed; 
+      border-collapse: collapse;
+      font-size: 12px; /* 💡 稍微缩小了 1px，给大数字腾空间 */
+      font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
+    }
+    
+    th:nth-child(1) { width: 14%; } 
+    th:nth-child(2) { width: 28%; } 
+    th:nth-child(3) { width: 30%; } 
+    th:nth-child(4) { width: 28%; } 
+
+    th {
+      text-align: right;
+      color: #8b93a6;
+      font-weight: normal;
+      padding: 5px 0 10px 0;
+      white-space: nowrap;
+    }
+    th:first-child, td:first-child { text-align: left; }
+    td {
+      padding: 6px 0;
+      text-align: right;
+      white-space: nowrap;
+    }
+    .row-buy td:nth-child(2) { color: #0ecb81; } 
+    .row-sell td:nth-child(2) { color: #f6465d; } 
+    
+    .my-order {
+      background-color: rgba(41, 98, 255, 0.15);
+      border-radius: 4px;
+    }
+    .my-order td {
+      font-weight: bold;
+    }
+    .my-order td:first-child::before {
+      content: "👉 ";
+    }
+    
+    .loading {
+      text-align: center;
+      color: #8b93a6;
+      padding: 20px;
+      font-style: italic;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="main-wrapper">
+    
+    <h1>XRPL 实时订单簿 (DEX)</h1>
+
+    <div class="config-card">
+      <div class="form-group form-group-issuer">
+        <label>发行方 (Issuer)</label>
+        <input type="text" id="issuerAddress" value="rMRH8W4c7BF4A77EPMxhiRFtt9q8DGo427">
+      </div>
+      <div class="form-group form-group-currency">
+        <label>代币代码 (Currency)</label>
+        <input type="text" id="currencyCode" value="RLJPY">
+      </div>
+      <div class="form-group form-group-address">
+        <label>你的地址 (用于高亮标记)</label>
+        <input type="text" id="myAddress" value="">
+      </div>
+      <button id="refreshBtn" onclick="fetchOrderBook()">刷新盘口</button>
+    </div>
+
+    <div class="orderbook-container">
+        <!-- 🔴 卖单盘口 (左侧) -->
+      <div class="book-panel">
+        <div class="book-title title-sell">卖单盘口 (Asks)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>账户 (部分)</th>
+              <th>单价 (XRP)</th>
+              <th>数量 (Token)</th>
+              <th>总额 (XRP)</th>
+            </tr>
+          </thead>
+          <tbody id="sellBody">
+            <tr><td colspan="4" class="loading">点击刷新加载数据...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
+        <!-- 🟢 买单盘口 (右侧) -->
+      <div class="book-panel">
+        <div class="book-title title-buy">买单盘口 (Bids)</div>
+        <table>
+          <thead>
+            <tr>
+              <th>账户 (部分)</th>
+              <th>单价 (XRP)</th>
+              <th>数量 (Token)</th>
+              <th>总额 (XRP)</th>
+            </tr>
+          </thead>
+          <tbody id="buyBody">
+            <tr><td colspan="4" class="loading">点击刷新加载数据...</td></tr>
+          </tbody>
+        </table>
+      </div>
+      
+    </div>
+
+  </div>
+
+  <script>
+    function formatCurrencyCode(code) {
+      if (code.length === 3) return code;
+      let hex = '';
+      for (let i = 0; i < code.length; i++) {
+        hex += code.charCodeAt(i).toString(16).padStart(2, '0');
+      }
+      return hex.toUpperCase().padEnd(40, "0");
+    }
+
+    function shortAddress(address) {
+      if (!address) return "";
+      return address.substring(0, 5) + "..." + address.substring(address.length - 4);
+    }
+
+    function formatNumber(num, decimals = 2) {
+      const n = Number(num);
+      return isNaN(n) ? "0.00" : n.toLocaleString('en-US', { minimumFractionDigits: decimals, maximumFractionDigits: decimals });
+    }
+
+    async function fetchOrderBook() {
+      const btn = document.getElementById("refreshBtn");
+      btn.disabled = true;
+      btn.innerText = "加载中...";
+      
+      document.getElementById("buyBody").innerHTML = '<tr><td colspan="4" class="loading">正在连接节点...</td></tr>';
+      document.getElementById("sellBody").innerHTML = '<tr><td colspan="4" class="loading">正在连接节点...</td></tr>';
+
+      const rawCurrency = document.getElementById("currencyCode").value.trim();
+      const issuer = document.getElementById("issuerAddress").value.trim();
+      const myAddress = document.getElementById("myAddress").value.trim();
+      const currencyHex = formatCurrencyCode(rawCurrency);
+
+      const client = new xrpl.Client("wss://xrplcluster.com");
+      
+      try {
+        await client.connect();
+
+        const sellResponse = await client.request({
+          command: "book_offers",
+          taker_gets: { currency: currencyHex, issuer: issuer },
+          taker_pays: { currency: "XRP" },
+          limit: 30
+        });
+
+        const buyResponse = await client.request({
+          command: "book_offers",
+          taker_gets: { currency: "XRP" },
+          taker_pays: { currency: currencyHex, issuer: issuer },
+          limit: 30
+        });
+
+        renderBook(buyResponse.result.offers, "buyBody", myAddress, "buy");
+        renderBook(sellResponse.result.offers, "sellBody", myAddress, "sell");
+
+      } catch (error) {
+        console.error(error);
+        alert("获取盘口失败: " + error.message);
+      } finally {
+        await client.disconnect();
+        btn.disabled = false;
+        btn.innerText = "刷新盘口";
+      }
+    }
+
+    function renderBook(offers, tbodyId, myAddress, type) {
+      const tbody = document.getElementById(tbodyId);
+      tbody.innerHTML = "";
+
+      if (!offers || offers.length === 0) {
+        tbody.innerHTML = `<tr><td colspan="4" class="loading">暂无挂单</td></tr>`;
+        return;
+      }
+
+      offers.forEach(o => {
+        let tokenAmount, xrpAmount, price;
+        const isMine = o.Account === myAddress;
+
+        if (type === "sell") {
+          tokenAmount = Number(o.TakerGets.value || o.TakerGets);
+          xrpAmount = Number(o.TakerPays) / 1000000;
+        } else {
+          xrpAmount = Number(o.TakerGets) / 1000000;
+          tokenAmount = Number(o.TakerPays.value || o.TakerPays);
+        }
+
+        price = xrpAmount / tokenAmount;
+
+        const tr = document.createElement("tr");
+        tr.className = `row-${type} ${isMine ? 'my-order' : ''}`;
+        
+        tr.innerHTML = `
+          <td>${shortAddress(o.Account)}</td>
+          <td>${price.toFixed(14)}</td> 
+          <td>${formatNumber(tokenAmount, 2)}</td>
+          <td>${formatNumber(xrpAmount, 2)}</td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+  </script>
+</body>
+</html>
