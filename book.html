@@ -131,10 +131,10 @@
       font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     }
     
-    th:nth-child(1) { width: 0%; } 
+    /* 🌟 改为 3 列分配宽度 */
+    th:nth-child(1) { width: 33%; } 
     th:nth-child(2) { width: 33%; } 
-    th:nth-child(3) { width: 33%; } 
-    th:nth-child(4) { width: 34%; } 
+    th:nth-child(3) { width: 34%; }
 
     th {
       text-align: right;
@@ -214,7 +214,6 @@
         <table>
           <thead>
             <tr>
-              <th>账户 (部分)</th>
               <th>单价 (XRP)</th>
               <th>数量 (Token)</th>
               <th>总额 (XRP)</th>
@@ -232,7 +231,6 @@
         <table>
           <thead>
             <tr>
-              <th>账户 (部分)</th>
               <th>单价 (XRP)</th>
               <th>数量 (Token)</th>
               <th>总额 (XRP)</th>
@@ -341,8 +339,8 @@
         const tr = document.createElement("tr");
         tr.className = `row-${type} ${isMine ? 'my-order' : ''}`;
         
+        // 🌟 去掉账户列，只保留单价、数量、总额 3 列
         tr.innerHTML = `
-          <td>${shortAddress(o.Account)}</td>
           <td>${price.toFixed(14)}</td> 
           <td>${formatNumber(tokenAmount, 2)}</td>
           <td>${formatNumber(xrpAmount, 2)}</td>
