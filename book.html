@@ -334,6 +334,11 @@
         tbody.appendChild(tr);
       });
     }
+
+    // 🌟 页面加载完成后自动执行一次获取数据
+    window.onload = function() {
+      fetchOrderBook();
+    };
   </script>
 </body>
 </html>
