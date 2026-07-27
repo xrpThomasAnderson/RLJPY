@@ -44,16 +44,12 @@
     }
     
     .form-group-issuer {
-      flex: 2; 
+      flex: 3; 
       min-width: 250px;
     }
     .form-group-currency {
       flex: 1;
       min-width: 120px;
-    }
-    .form-group-address {
-      flex: 2;
-      min-width: 250px;
     }
     
     .form-group label {
@@ -132,9 +128,8 @@
     }
     
     /* 🌟 改为 3 列分配宽度 */
-    th:nth-child(1) { width: 33%; } 
-    th:nth-child(2) { width: 33%; } 
-    th:nth-child(3) { width: 34%; }
+    th:nth-child(1) { width: 50%; } 
+    th:nth-child(2) { width: 50%; } 
 
     th {
       text-align: right;
@@ -200,10 +195,6 @@
         <label>代币代码 (Currency)</label>
         <input type="text" id="currencyCode" value="RLJPY">
       </div>
-      <div class="form-group form-group-address">
-        <label>你的地址 (用于高亮标记)</label>
-        <input type="text" id="myAddress" value="">
-      </div>
       <button id="refreshBtn" onclick="fetchOrderBook()">刷新盘口</button>
     </div>
 
@@ -216,7 +207,6 @@
             <tr>
               <th>单价 (XRP)</th>
               <th>数量 (Token)</th>
-              <th>总额 (XRP)</th>
             </tr>
           </thead>
           <tbody id="sellBody">
@@ -233,7 +223,6 @@
             <tr>
               <th>单价 (XRP)</th>
               <th>数量 (Token)</th>
-              <th>总额 (XRP)</th>
             </tr>
           </thead>
           <tbody id="buyBody">
@@ -278,7 +267,8 @@
 
       const rawCurrency = document.getElementById("currencyCode").value.trim();
       const issuer = document.getElementById("issuerAddress").value.trim();
-      const myAddress = document.getElementById("myAddress").value.trim();
+      // const myAddress = document.getElementById("myAddress").value.trim();
+      const myAddress = "";
       const currencyHex = formatCurrencyCode(rawCurrency);
 
       const client = new xrpl.Client("wss://xrplcluster.com");
@@ -339,11 +329,10 @@
         const tr = document.createElement("tr");
         tr.className = `row-${type} ${isMine ? 'my-order' : ''}`;
         
-        // 🌟 去掉账户列，只保留单价、数量、总额 3 列
+        // 🌟 去掉账户列，只保留单价、数量 2 列
         tr.innerHTML = `
           <td>${price.toFixed(14)}</td> 
           <td>${formatNumber(tokenAmount, 2)}</td>
-          <td>${formatNumber(xrpAmount, 2)}</td>
         `;
         tbody.appendChild(tr);
       });
