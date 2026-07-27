@@ -31,36 +31,57 @@
       margin: 0 auto;
     }
 
+    /* 🌟 控制输入区域 (手机端默认上下两排排列) */
     .config-card {
       background: #1e222d;
       padding: 20px;
       border-radius: 8px;
       margin-bottom: 20px;
       display: flex;
-      gap: 15px;
-      flex-wrap: wrap;
-      align-items: flex-end;
+      flex-direction: column; 
+      gap: 20px; /* 间距与下方盘口的 gap 一致 */
       width: 100%; 
     }
     
+    /* 🌟 左右区域容器 */
+    .config-half {
+      display: flex;
+      width: 100%;
+    }
+
+    /* 左侧 (发行方) */
     .form-group-issuer {
-      flex: 2; 
-      min-width: 250px;
+      width: 100%; 
     }
+
+    /* 右侧内部布局 (代币 + 按钮) */
+    .right-half {
+      display: flex;
+      gap: 15px;
+      align-items: flex-end; /* 底部对齐 */
+    }
+
     .form-group-currency {
-      flex: 1;
-      min-width: 120px;
-    }
-    .form-group-address {
-      flex: 2;
-      min-width: 250px;
+      flex: 1; /* 占据右半区剩余的所有空间 */
+      min-width: 0; 
     }
     
+    /* 🌟 电脑端 (宽度 > 768px) 严格按照 50% : 50% 对齐下面盘口 */
+    @media (min-width: 768px) {
+      .config-card {
+        flex-direction: row; 
+      }
+      .config-half {
+        flex: 1; /* 左右各占一半 */
+      }
+    }
+
     .form-group label {
       display: block;
       margin-bottom: 8px;
       font-size: 13px;
       color: #8b93a6;
+      white-space: nowrap;
     }
     
     .form-group input {
@@ -89,12 +110,12 @@
       height: 38px;
       transition: background 0.2s;
       white-space: nowrap; 
+      flex-shrink: 0; /* 确保按钮不会被太长的代币代码挤压变形 */
     }
     
     button:hover { background-color: #1e4bd8; }
     button:disabled { background-color: #363c4e; cursor: not-allowed; }
 
-    /* 🌟 修改点：开启 flex-wrap，允许屏幕小的时候盘口上下堆叠 */
     .orderbook-container {
       display: flex;
       flex-wrap: wrap; 
@@ -103,7 +124,6 @@
     }
     
     .book-panel {
-      /* 🌟 修改点：设定基础宽度，低于 480px 会自动把另一个挤到下一行 */
       flex: 1 1 480px; 
       background: #1e222d;
       border-radius: 8px;
@@ -123,15 +143,13 @@
     
     table {
       width: 100%;
-      /* 🌟 修改点：将内部表格最小极限宽度调小，配合稍小的字体 */
       min-width: 100%; 
       table-layout: fixed; 
       border-collapse: collapse;
-      font-size: 12px; /* 💡 稍微缩小了 1px，给大数字腾空间 */
+      font-size: 12px; 
       font-family: 'SFMono-Regular', Consolas, 'Liberation Mono', Menlo, monospace;
     }
     
-    /* 🌟 改为 3 列分配宽度 */
     th:nth-child(1) { width: 50%; } 
     th:nth-child(2) { width: 50%; } 
 
@@ -189,19 +207,26 @@
   <div class="main-wrapper">
 
     <div class="config-card">
-      <div class="form-group form-group-issuer">
-        <label>发行方 (Issuer)</label>
-        <input type="text" id="issuerAddress" value="rMRH8W4c7BF4A77EPMxhiRFtt9q8DGo427">
+      <!-- 🔴 左半部分 (对应下方卖单盘口宽度) -->
+      <div class="config-half">
+        <div class="form-group form-group-issuer">
+          <label>发行方 (Issuer)</label>
+          <input type="text" id="issuerAddress" value="rMRH8W4c7BF4A77EPMxhiRFtt9q8DGo427">
+        </div>
       </div>
-      <div class="form-group form-group-currency">
-        <label>代币代码 (Currency)</label>
-        <input type="text" id="currencyCode" value="RLJPY">
+      
+      <!-- 🟢 右半部分 (对应下方买单盘口宽度) -->
+      <div class="config-half right-half">
+        <div class="form-group form-group-currency">
+          <label>代币代码 (Currency)</label>
+          <input type="text" id="currencyCode" value="RLJPY">
+        </div>
+        <div class="form-group form-group-address" style="display: none;">
+          <label>你的地址 (用于高亮标记)</label>
+          <input type="text" id="myAddress" value="">
+        </div>
+        <button id="refreshBtn" onclick="fetchOrderBook()">刷新盘口</button>
       </div>
-      <div class="form-group form-group-address">
-        <label>你的地址 (用于高亮标记)</label>
-        <input type="text" id="myAddress" value="r3iFXGoRF1xfwb7kZ121SAdTgVWcexQ9tE">
-      </div>
-      <button id="refreshBtn" onclick="fetchOrderBook()">刷新盘口</button>
     </div>
 
     <div class="orderbook-container">
@@ -212,11 +237,11 @@
           <thead>
             <tr>
               <th>单价 (XRP)</th>
-              <th>数量 (RLJPY)</th>
+              <th>数量 (<span class="dynamic-currency">RLJPY</span>)</th>
             </tr>
           </thead>
           <tbody id="sellBody">
-            <tr><td colspan="4" class="loading">点击刷新加载数据...</td></tr>
+            <tr><td colspan="2" class="loading">正在加载数据...</td></tr>
           </tbody>
         </table>
       </div>
@@ -228,19 +253,18 @@
           <thead>
             <tr>
               <th>单价 (XRP)</th>
-              <th>数量 (RLJPY)</th>
+              <th>数量 (<span class="dynamic-currency">RLJPY</span>)</th>
             </tr>
           </thead>
           <tbody id="buyBody">
-            <tr><td colspan="4" class="loading">点击刷新加载数据...</td></tr>
+            <tr><td colspan="2" class="loading">正在加载数据...</td></tr>
           </tbody>
         </table>
       </div>
       
     </div>
 
-
-    <p style="text-align: center;"><a href="https://xrpthomasanderson.github.io/RLJPY/" class="btn">首页</a></p>
+    <p style="text-align: center; margin-top: 20px;"><a href="https://xrpthomasanderson.github.io/RLJPY/" class="btn">首页</a></p>
   </div>
 
   <script>
@@ -268,14 +292,19 @@
       btn.disabled = true;
       btn.innerText = "加载中...";
       
-      document.getElementById("buyBody").innerHTML = '<tr><td colspan="4" class="loading">正在连接节点...</td></tr>';
-      document.getElementById("sellBody").innerHTML = '<tr><td colspan="4" class="loading">正在连接节点...</td></tr>';
+      document.getElementById("buyBody").innerHTML = '<tr><td colspan="2" class="loading">正在连接节点...</td></tr>';
+      document.getElementById("sellBody").innerHTML = '<tr><td colspan="2" class="loading">正在连接节点...</td></tr>';
 
       const rawCurrency = document.getElementById("currencyCode").value.trim();
       const issuer = document.getElementById("issuerAddress").value.trim();
       const myAddress = document.getElementById("myAddress").value.trim();
-      const currencyHex = formatCurrencyCode(rawCurrency);
+      
+      const currencyLabels = document.querySelectorAll(".dynamic-currency");
+      currencyLabels.forEach(label => {
+        label.innerText = rawCurrency || "Token"; 
+      });
 
+      const currencyHex = formatCurrencyCode(rawCurrency);
       const client = new xrpl.Client("wss://xrplcluster.com");
       
       try {
@@ -313,7 +342,7 @@
       tbody.innerHTML = "";
 
       if (!offers || offers.length === 0) {
-        tbody.innerHTML = `<tr><td colspan="4" class="loading">暂无挂单</td></tr>`;
+        tbody.innerHTML = `<tr><td colspan="2" class="loading">暂无挂单</td></tr>`;
         return;
       }
 
@@ -334,7 +363,6 @@
         const tr = document.createElement("tr");
         tr.className = `row-${type} ${isMine ? 'my-order' : ''}`;
         
-        // 🌟 去掉账户列，只保留单价、数量 2 列
         tr.innerHTML = `
           <td>${price.toFixed(14)}</td> 
           <td>${formatNumber(tokenAmount, 2)}</td>
@@ -343,7 +371,6 @@
       });
     }
 
-    // 🌟 页面加载完成后自动执行一次获取数据
     window.onload = function() {
       fetchOrderBook();
     };
