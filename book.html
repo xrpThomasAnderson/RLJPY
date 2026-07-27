@@ -44,12 +44,16 @@
     }
     
     .form-group-issuer {
-      flex: 3; 
+      flex: 2; 
       min-width: 250px;
     }
     .form-group-currency {
       flex: 1;
       min-width: 120px;
+    }
+    .form-group-address {
+      flex: 2;
+      min-width: 250px;
     }
     
     .form-group label {
@@ -195,6 +199,10 @@
         <label>代币代码 (Currency)</label>
         <input type="text" id="currencyCode" value="RLJPY">
       </div>
+      <div class="form-group form-group-address">
+        <label>你的地址 (用于高亮标记)</label>
+        <input type="text" id="myAddress" value="">
+      </div>
       <button id="refreshBtn" onclick="fetchOrderBook()">刷新盘口</button>
     </div>
 
@@ -267,8 +275,7 @@
 
       const rawCurrency = document.getElementById("currencyCode").value.trim();
       const issuer = document.getElementById("issuerAddress").value.trim();
-      // const myAddress = document.getElementById("myAddress").value.trim();
-      const myAddress = "";
+      const myAddress = document.getElementById("myAddress").value.trim();
       const currencyHex = formatCurrencyCode(rawCurrency);
 
       const client = new xrpl.Client("wss://xrplcluster.com");
