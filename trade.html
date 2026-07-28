@@ -135,11 +135,12 @@
       font-size: 14px;
     }
 
-    /* 挂单列表样式 */
+    /* 挂单列表样式（已修复裁剪问题） */
     .offers-table {
       width: 100%;
       border-collapse: collapse;
-      margin-top: 15px;
+      margin-top: 10px;
+      margin-bottom: 15px;
       font-size: 13px;
     }
     .offers-table th, .offers-table td {
@@ -151,6 +152,13 @@
       background-color: #f1f3f5;
       color: #495057;
     }
+    .table-title {
+      font-size: 15px;
+      font-weight: bold;
+      margin-top: 15px;
+      margin-bottom: 5px;
+    }
+
     .btn {
       display: inline-block;
       background-color: #2ea44f;
@@ -170,7 +178,6 @@
       .form-row { flex-direction: column; gap: 0; }
       body { padding: 0 10px; }
       .card { padding: 15px; }
-      /* 移除了针对输入框字体的特殊缩小，保持默认大小 */
     }
   </style>
 </head>
@@ -230,7 +237,7 @@
 
   <!-- 3. 控制台日志 -->
   <div class="card">
-    <h3 class="section-title">日志台</h3>
+    <h3 class="section-title">日志台 (Log)</h3>
     <div id="console-output">等待填写配置并开始操作...<br></div>
   </div>
 
@@ -448,51 +455,89 @@
 
         logToScreen(`成功找到 ${offers.length} 条挂单记录。`);
 
-        let html = `
-          <table class="offers-table">
-            <thead>
-              <tr>
-                <th></th>
-                <th>付出</th>
-                <th>得到</th>
-                <th></th>
-              </tr>
-            </thead>
-            <tbody>
-        `;
+        // 分类为卖单和买单
+        let sellOffers = [];
+        let buyOffers = [];
 
         offers.forEach(offer => {
-          // 获取或解码代币符号
-          let getsSymbol = typeof offer.taker_gets === 'object' 
-            ? (hexToString(offer.taker_gets.currency) || currentInputCurrency) 
-            : '';
-          let paysSymbol = typeof offer.taker_pays === 'object' 
-            ? (hexToString(offer.taker_pays.currency) || currentInputCurrency) 
-            : '';
-
-          let getsDesc = typeof offer.taker_gets === 'string' 
-            ? formatNumber(parseInt(offer.taker_gets) / 1000000) + " XRP"
-            : `${formatNumber(offer.taker_gets.value)} ${getsSymbol}`;
-
-          let paysDesc = typeof offer.taker_pays === 'string' 
-            ? formatNumber(parseInt(offer.taker_pays) / 1000000) + " XRP"
-            : `${formatNumber(offer.taker_pays.value)} ${paysSymbol}`;
-
-          let isSell = typeof offer.taker_gets === 'object'; 
-          // 修改为只保留“买/卖”，去掉圆点和“单”
-          let typeBadge = isSell ? "<span style='color:red; font-weight:bold;'>卖</span>" : "<span style='color:green; font-weight:bold;'>买</span>";
-
-          html += `
-            <tr>
-              <td>${typeBadge}</td>
-              <td>${getsDesc}</td>
-              <td>${paysDesc}</td>
-              <td><button class="btn-cancel" onclick="cancelSpecificOffer(${offer.seq})">❌</button></td>
-            </tr>
-          `;
+          let isSell = typeof offer.taker_gets === 'object';
+          if (isSell) {
+            sellOffers.push(offer);
+          } else {
+            buyOffers.push(offer);
+          }
         });
 
-        html += `</tbody></table>`;
+        let html = '';
+
+        // 1. 渲染卖单表格
+        if (sellOffers.length > 0) {
+          html += `<div class="table-title" style="color: #dc3545;">卖单列表 (${sellOffers.length})</div>`;
+          html += `
+            <table class="offers-table">
+              <colgroup>
+                <col>
+                <col>
+                <col style="width: 75px;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>${currentInputCurrency}</th>
+                  <th>XRP</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+          sellOffers.forEach(offer => {
+            let getsDesc = formatNumber(offer.taker_gets.value);
+            let paysDesc = formatNumber(parseInt(offer.taker_pays) / 1000000);
+
+            html += `
+              <tr>
+                <td>${getsDesc}</td>
+                <td>${paysDesc}</td>
+                <td><button class="btn-cancel" onclick="cancelSpecificOffer(${offer.seq})">❌</button></td>
+              </tr>
+            `;
+          });
+          html += `</tbody></table>`;
+        }
+
+        // 2. 渲染买单表格
+        if (buyOffers.length > 0) {
+          html += `<div class="table-title" style="color: #28a745;">买单列表 (${buyOffers.length})</div>`;
+          html += `
+            <table class="offers-table">
+              <colgroup>
+                <col>
+                <col>
+                <col style="width: 75px;">
+              </colgroup>
+              <thead>
+                <tr>
+                  <th>XRP</th>
+                  <th>${currentInputCurrency}</th>
+                  <th>操作</th>
+                </tr>
+              </thead>
+              <tbody>
+          `;
+          buyOffers.forEach(offer => {
+            let getsDesc = formatNumber(parseInt(offer.taker_gets) / 1000000);
+            let paysDesc = formatNumber(offer.taker_pays.value);
+
+            html += `
+              <tr>
+                <td>${getsDesc}</td>
+                <td>${paysDesc}</td>
+                <td><button class="btn-cancel" onclick="cancelSpecificOffer(${offer.seq})">❌</button></td>
+              </tr>
+            `;
+          });
+          html += `</tbody></table>`;
+        }
+
         container.innerHTML = html;
 
       } catch (error) {
