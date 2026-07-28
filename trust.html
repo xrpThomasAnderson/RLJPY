@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XRPL 主网信任线建立工具</title>
+  
+  <!-- 引入 Ethers.js: 专门用于安全、离线生成符合 BIP39 标准的 12 位助记词 -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.8.0/ethers.umd.min.js" integrity="sha384-KpyAXoFibPIUEi79EsnN1EtEWCCrOQ8MtGsa4IrVxeZo514PYarFXujnjyu0DzgC" crossorigin="anonymous"></script>
+  
+  <!-- 引入 XRPL.js: 专门用于地址推导、签名以及与 XRPL 主网通信 -->
+  <script src="https://unpkg.com/xrpl@2.14.0/build/xrpl-latest-min.js" integrity="sha384-J7PqxLCqaHM/pbIDWeW/yXzoVfDsXFxA6Y1uyZ9dQBN1OJ2OCDVcxa82moQX9ecX" crossorigin="anonymous"></script>
+
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 20px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+    h1 { color: #333; text-align: center; margin-bottom: 30px; }
+    
+    .card {
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .form-group { margin-bottom: 15px; }
+    .form-row { display: flex; gap: 15px; }
+    .form-col { flex: 1; }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+      font-size: 14px;
+    }
+    .form-group input, .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+    .section-title {
+      margin-top: 0;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #eee;
+      color: #007bff;
+      font-size: 18px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 12px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: background-color 0.2s;
+    }
+    button:hover { background-color: #0056b3; }
+    button:disabled { background-color: #6c757d; cursor: not-allowed; }
+    
+    .btn-secondary {
+      background-color: #2ea44f;
+      margin-top: 0;
+    }
+    .btn-secondary:hover { background-color: #2c974b; }
+
+    #console-output {
+      background-color: #1e1e1e;
+      color: #00ff00;
+      padding: 15px;
+      border-radius: 5px;
+      height: 350px;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin-top: 20px;
+    }
+    
+    /* 提示框样式 */
+    .notice {
+      color: #856404;
+      background-color: #fff3cd;
+      padding: 15px;
+      border-radius: 5px;
+      border: 1px solid #ffeeba;
+      margin-bottom: 20px;
+      font-size: 14px;
+      line-height: 1.6;
+    }
+    .notice a {
+      color: #0056b3;
+      font-weight: bold;
+      text-decoration: underline;
+    }
+
+    /* 生成结果框样式 */
+    .result-box {
+      background-color: #f8f9fa;
+      border: 1px dashed #007bff;
+      padding: 15px;
+      border-radius: 5px;
+      margin-top: 15px;
+      display: none;
+    }
+    .warning-text { color: #dc3545; font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+  </style>
+</head>
+<body>
+
+  <h1>XRPL 主网信任线建立工具</h1>
+
+  <!-- ================= 第一部分：助记词生成器 ================= -->
+  <div class="card">
+    <h3 class="section-title">步骤 1. 生成新钱包</h3>
+    <p style="font-size: 14px; color: #555; margin-bottom: 15px;">如果您还没有 XRP 钱包，可以点击下方按钮生成一个全新的 12 单词助记词钱包。</p>
+    <button class="btn-secondary" onclick="generateNewWallet()">🎲 随机生成新钱包</button>
+    
+    <div id="newWalletInfo" class="result-box">
+      <div class="form-group">
+        <label>您的 12 位助记词 (Mnemonic)：</label>
+        <div class="warning-text">⚠️ 绝对机密！请立即抄写在纸上，泄露助记词等于丢失资产！</div>
+        <textarea id="genMnemonic" readonly rows="2" style="background:#fff8e1; border-color:#ff9800; font-weight:bold; color:#d32f2f;"></textarea>
+      </div>
+      <div class="form-group">
+        <label>您的 XRP 钱包地址：</label>
+        <input type="text" id="genAddress" readonly style="background:#e9ecef; font-weight:bold;">
+      </div>
+      <button style="background-color: #6c757d; font-size: 14px; padding: 8px;" onclick="fillFormBelow()">👇 将此助记词一键填入下方表单</button>
+    </div>
+  </div>
+
+  <!-- ================= 第二部分：激活与充值提示 ================= -->
+  <div class="notice">
+    <strong>💡 钱包激活与费用说明：</strong><br>
+    请确认您的 XRP 地址拥有至少 <strong>2 个 XRP</strong>。<br>
+    - 激活新账户会锁定 <strong>1 个 XRP</strong> 作为基础储备金（无法转出）。<br>
+    - 剩余的 XRP 可用于支付网络手续费和测试（每次建立新的代币信任线会额外锁定 <strong>0.2 XRP</strong>，取消信任线后释放）。<br><br>
+    👉 <strong>推荐使用 Xaman 钱包应用</strong>查看资产和转账，安全且便捷：<br>
+    <a href="https://xaman.app/" target="_blank">访问 Xaman 官网下载 (xaman.app)</a>
+  </div>
+
+  <!-- ================= 第三部分：建立信任线核心工具 ================= -->
+  <div class="card">
+    
+    <h3 class="section-title">步骤 2. 填写钱包配置</h3>
+    <div class="form-group">
+      <label>助记词 (Mnemonic)：</label>
+      <input type="text" id="userMnemonic" placeholder="输入 12 或 24 个英文单词，用空格分隔">
+    </div>
+
+    <h3 class="section-title" style="margin-top: 25px;">步骤 3. 要信任的代币信息</h3>
+    <div class="form-group">
+      <label>发行方地址 (Issuer Address)：</label>
+      <input type="text" id="issuerAddress" value="rMRH8W4c7BF4A77EPMxhiRFtt9q8DGo427" placeholder="rMRH8W4c7BF4A77EPMxhiRFtt9q8DGo427">
+    </div>
+    
+    <div class="form-row">
+      <div class="form-group form-col">
+        <label>代币代码 (Currency Code)：</label>
+        <input type="text" id="currencyCode" value="RLJPY" placeholder="RLJPY">
+      </div>
+      <div class="form-group form-col">
+        <label>信任额度上限 (Limit Amount)：</label>
+        <input type="number" id="limitAmount" value="100000000000000" placeholder="100000000000000">
+      </div>
+    </div>
+
+    <button id="startBtn" onclick="startProcess()">🚀 连接网络并建立信任线</button>
+    
+    <div id="console-output">等待填写配置并开始操作...<br></div>
+  </div>
+
+  <script>
+    // ==========================================
+    // 第一部分功能：助记词与地址生成
+    // ==========================================
+    function generateNewWallet() {
+      try {
+        // 1. 使用 ethers.js 极其稳定地生成 12 位标准助记词
+        // 巧妙避开 xrpl.js 在前端不暴露 bip39 模块的 bug
+        const zhujici = ethers.Wallet.createRandom().mnemonic.phrase;
+
+        // 2. 利用 xrpl.js 从这组助记词中，按照 XRPL 标准推导出钱包对象并获取地址
+        const wallet = xrpl.Wallet.fromMnemonic(zhujici, { 
+          derivationPath: "m/44'/144'/0'/0/0" 
+        });
+
+        // 3. 将结果显示在界面上
+        document.getElementById('newWalletInfo').style.display = 'block';
+        document.getElementById('genMnemonic').value = zhujici;
+        document.getElementById('genAddress').value = wallet.address;
+
+      } catch (error) {
+        alert("生成钱包失败: " + error.message);
+        console.error(error);
+      }
+    }
+
+    // 快捷填入表单功能
+    function fillFormBelow() {
+      const genMnemonic = document.getElementById('genMnemonic').value;
+      if (genMnemonic) {
+        document.getElementById('userMnemonic').value = genMnemonic;
+        document.getElementById('userMnemonic').style.borderColor = "#2ea44f";
+        alert("✅ 助记词已填入下方表单！\n注意：请确保该地址拥有至少 2 个 XRP 后再建立信任线。");
+      }
+    }
+
+
+    // ==========================================
+    // 第三部分功能：建立信任线逻辑
+    // ==========================================
+    const logContainer = document.getElementById('console-output');
+    function logToScreen(message, isError = false) {
+      const line = document.createElement('div');
+      line.style.color = isError ? '#ff4d4d' : '#00ff00';
+      line.textContent = message;
+      logContainer.appendChild(line);
+      logContainer.scrollTop = logContainer.scrollHeight;
+      if (isError) { console.error(message); } else { console.log(message); }
+    }
+
+    function formatCurrencyCode(code) {
+      if (code.length === 3) return code;
+      let hex = '';
+      for (let i = 0; i < code.length; i++) {
+        hex += code.charCodeAt(i).toString(16).padStart(2, '0');
+      }
+      return hex.toUpperCase().padEnd(40, "0");
+    }
+
+    async function establishTrustline() {
+      const userMnemonic = document.getElementById("userMnemonic").value.trim();
+      const issuerAddress = document.getElementById("issuerAddress").value.trim();
+      const rawCurrency = document.getElementById("currencyCode").value.trim();
+      const limitAmount = document.getElementById("limitAmount").value.trim();
+
+      if (!userMnemonic || !issuerAddress || !rawCurrency || !limitAmount) {
+        alert("请完整填写所有信息！");
+        return;
+      }
+
+      const btn = document.getElementById('startBtn');
+      btn.disabled = true;
+      btn.textContent = "正在执行，请勿关闭页面...";
+      logContainer.innerHTML = ""; 
+      
+      const MAINNET_URL = "wss://xrplcluster.com"; 
+      const client = new xrpl.Client(MAINNET_URL);
+      
+      try {
+        logToScreen("正在通过助记词推导钱包实例...");
+        const userWallet = xrpl.Wallet.fromMnemonic(userMnemonic, { 
+          derivationPath: "m/44'/144'/0'/0/0" 
+        });
+
+        logToScreen("正在连接到 XRPL 主网节点...");
+        await client.connect();
+        logToScreen("🔗 已成功连接到 XRPL 主网\n");
+
+        logToScreen(`操作钱包地址: ${userWallet.address}`);
+        logToScreen(`目标发行方: ${issuerAddress}`);
+        
+        const currencyHex = formatCurrencyCode(rawCurrency);
+        logToScreen(`代币名称: ${rawCurrency} -> ${currencyHex}`);
+        logToScreen(`信任额度: ${limitAmount}\n`);
+
+        logToScreen("正在构建 TrustSet (建立信任线) 交易...");
+        const trustSetTx = {
+          TransactionType: "TrustSet",
+          Account: userWallet.address,
+          LimitAmount: {
+            currency: currencyHex,
+            issuer: issuerAddress,
+            value: limitAmount,
+          },
+          Flags: xrpl.TrustSetFlags.tfSetNoRipple 
+        };
+
+        logToScreen("正在签名并提交交易上链...");
+        const trustSetPrepared = await client.autofill(trustSetTx);
+        const trustSetSigned = userWallet.sign(trustSetPrepared);
+        const trustSetResult = await client.submitAndWait(trustSetSigned.tx_blob);
+
+        const txResult = trustSetResult.result.meta.TransactionResult;
+        
+        if (txResult === "tesSUCCESS") {
+          logToScreen("\n🎉🎉🎉 信任线建立成功！");
+          logToScreen(`您现在可以接收来自 ${issuerAddress} 的 ${rawCurrency} 代币了。`);
+          logToScreen(`交易哈希: ${trustSetResult.result.hash}`);
+          logToScreen(`浏览器查看: https://livenet.xrpl.org/transactions/${trustSetResult.result.hash}`);
+        } else {
+          logToScreen(`❌ 建立失败: ${txResult}`, true);
+          if (txResult === "tecNO_DST_INSUF_XRP") {
+            logToScreen("提示: 您的钱包未激活或 XRP 余额不足！请确保账户里至少有 2 个 XRP。", true);
+          }
+        }
+
+      } catch (error) {
+        logToScreen(`执行过程出错: ${error.message}`, true);
+        if (error.message.includes("mnemonic") || error.message.includes("wordlist") || error.message.includes("checksum")) {
+          logToScreen("提示: 请检查助记词是否输入正确（12/24个英文单词，由空格隔开）。", true);
+        } else if (error.message.includes("address")) {
+          logToScreen("提示: 请检查发行方地址格式是否正确。", true);
+        }
+      } finally {
+        await client.disconnect();
+        logToScreen("\n🔌 已断开主网连接");
+        btn.disabled = false;
+        btn.textContent = "连接网络并建立信任线";
+      }
+    }
+
+    function startProcess() {
+      establishTrustline();
+    }
+  </script>
+</body>
+</html>
