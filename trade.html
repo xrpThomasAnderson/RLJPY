@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>XRPL DEX 交易与挂单管理工具</title>
+  <title>RLJPY交易页</title>
   <!-- 引入带有 SRI 防篡改安全校验的 XRPL.js -->
   <script 
     src="https://unpkg.com/xrpl@2.14.0/build/xrpl-latest-min.js" 
@@ -162,16 +162,13 @@
 </head>
 <body>
 
-  <h1>XRPL DEX 交易与挂单管理工具</h1>
-  
   <div class="notice">
-    <strong>📈 工具说明：</strong><br>
-    支持在 XRPL 原生去中心化交易所（DEX）进行<b>买入/卖出挂单</b>，同时支持在下方<b>实时查询你的未成交挂单</b>并一键<b>取消挂单释放储备金</b>。
+    📈 支持在 XRPL 原生去中心化交易所（DEX）进行<b>买入/卖出挂单</b>，同时支持在下方<b>实时查询你的未成交挂单</b>并一键<b>取消挂单释放储备金</b>。
   </div>
 
   <!-- 1. 钱包账户 -->
   <div class="card">
-    <h3 class="section-title">1. 操作钱包 (Wallet)</h3>
+    <h3 class="section-title">操作钱包 (Wallet)</h3>
     <div class="form-group">
       <label>钱包助记词 (Mnemonic)：</label>
       <textarea id="treasuryMnemonic" rows="6" placeholder="请输入操作钱包的 12/24 位助记词"></textarea>
@@ -180,7 +177,7 @@
 
   <!-- 2. 发起挂单区域 -->
   <div class="card">
-    <h3 class="section-title">2. 创建新挂单 (OfferCreate)</h3>
+    <h3 class="section-title">创建新挂单 (Offer Create)</h3>
     
     <div class="form-group">
       <label>发行方地址 (Issuer Address)：</label>
@@ -205,11 +202,11 @@
 
     <div class="form-row">
       <div class="form-group form-col">
-        <label id="lblToken">买入代币数量 (你想要的)：</label>
+        <label id="lblToken">买入代币数量：</label>
         <input type="number" step="any" id="tokenAmount" value="400000000">
       </div>
       <div class="form-group form-col">
-        <label id="lblXrp">准备支付 XRP 数量 (你付出的)：</label>
+        <label id="lblXrp">支付XRP数量：</label>
         <input type="number" step="any" id="xrpAmount" value="1">
       </div>
     </div>
@@ -219,14 +216,14 @@
 
   <!-- 3. 控制台日志 -->
   <div class="card">
-    <h3 class="section-title">3. 操作日志台</h3>
+    <h3 class="section-title">日志台</h3>
     <div id="console-output">等待填写配置并开始操作...<br></div>
   </div>
 
   <!-- 4. 查询与管理挂单区域 -->
   <div class="card">
-    <h3 class="section-title">4. 我的未成交挂单管理 (Query & Cancel)</h3>
-    <p style="font-size: 14px; color: #555; margin-bottom: 10px;">点击下方按钮可链上查询当前钱包所有挂在盘口里的单子：</p>
+    <h3 class="section-title">未成交挂单管理 (Orders)</h3>
+    <p style="font-size: 14px; color: #555; margin-bottom: 10px;">查询当前钱包所有挂在盘口里的单子：</p>
     <button class="btn-query" onclick="queryMyOffers()">🔍 查询我的所有挂单</button>
     
     <div id="offersResultContainer" style="overflow-x:auto;">
@@ -245,8 +242,8 @@
       const xrpInput = document.getElementById('xrpAmount');
 
       if (isSell) {
-        lblToken.textContent = "卖出代币数量 (你付出的)：";
-        lblXrp.textContent = "期望获得 XRP 数量 (你想要的)：";
+        lblToken.textContent = "卖出代币数量：";
+        lblXrp.textContent = "期望获得 XRP 数量：";
         startBtn.textContent = "🔴 提交【卖出】挂单";
         startBtn.className = "btn-sell";
         if (isUserClick) {
@@ -254,8 +251,8 @@
           xrpInput.value = "1";
         }
       } else {
-        lblToken.textContent = "买入代币数量 (你想要的)：";
-        lblXrp.textContent = "准备支付 XRP 数量 (你付出的)：";
+        lblToken.textContent = "买入代币数量：";
+        lblXrp.textContent = "准备支付 XRP 数量：";
         startBtn.textContent = "🟢 提交【买入】挂单";
         startBtn.className = "btn-buy";
         if (isUserClick) {
