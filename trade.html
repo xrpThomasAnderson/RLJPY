@@ -151,6 +151,20 @@
       background-color: #f1f3f5;
       color: #495057;
     }
+    .btn {
+      display: inline-block;
+      background-color: #2ea44f;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #2c974b;
+    }
     
     @media (max-width: 600px) {
       .form-row { flex-direction: column; gap: 0; }
@@ -231,6 +245,8 @@
     </div>
   </div>
 
+  <p style="text-align: center; margin-top: 20px;"><a href="https://xrpthomasanderson.github.io/RLJPY/" class="btn">首页</a></p>
+
   <script>
     // --- 界面交互：根据买卖方向动态更新提示语、按钮颜色与默认数值 ---
     function updateUI(isUserClick = false) {
@@ -243,7 +259,7 @@
 
       if (isSell) {
         lblToken.textContent = "卖出代币数量：";
-        lblXrp.textContent = "期望获得 XRP 数量：";
+        lblXrp.textContent = "获得XRP数量：";
         startBtn.textContent = "🔴 提交【卖出】挂单";
         startBtn.className = "btn-sell";
         if (isUserClick) {
@@ -252,7 +268,7 @@
         }
       } else {
         lblToken.textContent = "买入代币数量：";
-        lblXrp.textContent = "准备支付 XRP 数量：";
+        lblXrp.textContent = "支付XRP数量：";
         startBtn.textContent = "🟢 提交【买入】挂单";
         startBtn.className = "btn-buy";
         if (isUserClick) {
