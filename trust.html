@@ -122,6 +122,20 @@
       display: none;
     }
     .warning-text { color: #dc3545; font-size: 12px; font-weight: bold; margin-bottom: 5px; }
+    .btn {
+      display: inline-block;
+      background-color: #2ea44f;
+      color: white;
+      padding: 10px 20px;
+      border-radius: 6px;
+      text-decoration: none;
+      font-weight: 600;
+      font-size: 14px;
+      transition: background-color 0.2s;
+    }
+    .btn:hover {
+      background-color: #2c974b;
+    }
 
     /* =========================================
        手机端自适应样式优化 (核心改动区)
@@ -218,6 +232,7 @@
     <button id="startBtn" onclick="startProcess()">🚀 连接网络并建立信任线</button>
     
     <div id="console-output">等待填写配置并开始操作...<br></div>
+    <p style="text-align: center; margin-top: 20px;"><a href="https://xrpthomasanderson.github.io/RLJPY/" class="btn">首页</a></p>
   </div>
 
   <script>
