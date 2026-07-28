@@ -1,0 +1,539 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>XRPL DEX 交易与挂单管理工具</title>
+  <!-- 引入带有 SRI 防篡改安全校验的 XRPL.js -->
+  <script 
+    src="https://unpkg.com/xrpl@2.14.0/build/xrpl-latest-min.js" 
+    integrity="sha384-J7PqxLCqaHM/pbIDWeW/yXzoVfDsXFxA6Y1uyZ9dQBN1OJ2OCDVcxa82moQX9ecX" 
+    crossorigin="anonymous">
+  </script>
+  <style>
+    body {
+      font-family: system-ui, -apple-system, sans-serif;
+      max-width: 800px;
+      margin: 20px auto;
+      padding: 0 20px;
+      background-color: #f4f6f8;
+      color: #333;
+    }
+    h1 { color: #333; text-align: center; }
+    .card {
+      background: #ffffff;
+      padding: 25px;
+      border-radius: 8px;
+      box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+      margin-bottom: 20px;
+    }
+    .form-group {
+      margin-bottom: 15px;
+    }
+    .form-row {
+      display: flex;
+      gap: 15px;
+    }
+    .form-col {
+      flex: 1;
+    }
+    .form-group label {
+      display: block;
+      margin-bottom: 8px;
+      font-weight: bold;
+      color: #555;
+      font-size: 14px;
+    }
+    .form-group input[type="text"],
+    .form-group input[type="number"],
+    .form-group input[type="password"],
+    .form-group textarea {
+      width: 100%;
+      padding: 12px;
+      box-sizing: border-box;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      font-size: 14px;
+      font-family: monospace;
+    }
+    .form-group textarea {
+      resize: vertical; /* 允许用户垂直拉伸文本框 */
+      line-height: 1.5;
+    }
+    .form-group input:focus, .form-group textarea:focus {
+      border-color: #007bff;
+      outline: none;
+    }
+    .radio-group {
+      display: flex;
+      gap: 20px;
+      background: #f8f9fa;
+      padding: 15px;
+      border-radius: 6px;
+      border: 1px solid #dee2e6;
+    }
+    .radio-label {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      font-size: 16px;
+      font-weight: bold !important;
+    }
+    .radio-label input { width: 18px; height: 18px; cursor: pointer;}
+    
+    .section-title {
+      margin-top: 0;
+      margin-bottom: 15px;
+      padding-bottom: 5px;
+      border-bottom: 2px solid #eee;
+      color: #007bff;
+      font-size: 18px;
+    }
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 14px 20px;
+      font-size: 16px;
+      border-radius: 5px;
+      cursor: pointer;
+      width: 100%;
+      font-weight: bold;
+      margin-top: 10px;
+      transition: background-color 0.2s;
+    }
+    button:hover { filter: brightness(0.9); }
+    button:disabled { background-color: #6c757d !important; cursor: not-allowed; }
+    
+    /* 动态按钮颜色 */
+    .btn-sell { background-color: #dc3545; }
+    .btn-buy { background-color: #28a745; }
+    .btn-query { background-color: #17a2b8; }
+    .btn-cancel { background-color: #ffc107; color: #333; padding: 6px 12px; font-size: 13px; width: auto; margin-top: 0; }
+
+    #console-output {
+      background-color: #1e1e1e;
+      color: #00ff00;
+      padding: 15px;
+      border-radius: 5px;
+      height: 250px;
+      overflow-y: auto;
+      font-family: monospace;
+      white-space: pre-wrap;
+      word-wrap: break-word;
+      margin-top: 20px;
+    }
+    
+    .notice {
+      color: #0c5460;
+      background-color: #d1ecf1;
+      padding: 12px;
+      border-radius: 5px;
+      border: 1px solid #bee5eb;
+      margin-bottom: 20px;
+      font-size: 14px;
+    }
+
+    /* 挂单列表样式 */
+    .offers-table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-top: 15px;
+      font-size: 13px;
+    }
+    .offers-table th, .offers-table td {
+      border: 1px solid #dee2e6;
+      padding: 10px;
+      text-align: left;
+    }
+    .offers-table th {
+      background-color: #f1f3f5;
+      color: #495057;
+    }
+    
+    @media (max-width: 600px) {
+      .form-row { flex-direction: column; gap: 0; }
+      body { padding: 0 10px; }
+      .card { padding: 15px; }
+      #treasuryMnemonic, #issuerAddress { font-size: 11.5px !important; }
+    }
+  </style>
+</head>
+<body>
+
+  <h1>XRPL DEX 交易与挂单管理工具</h1>
+  
+  <div class="notice">
+    <strong>📈 工具说明：</strong><br>
+    支持在 XRPL 原生去中心化交易所（DEX）进行<b>买入/卖出挂单</b>，同时支持在下方<b>实时查询你的未成交挂单</b>并一键<b>取消挂单释放储备金</b>。
+  </div>
+
+  <!-- 1. 钱包账户 -->
+  <div class="card">
+    <h3 class="section-title">1. 操作钱包 (Wallet)</h3>
+    <div class="form-group">
+      <label>钱包助记词 (Mnemonic)：</label>
+      <textarea id="treasuryMnemonic" rows="6" placeholder="请输入操作钱包的 12/24 位助记词"></textarea>
+    </div>
+  </div>
+
+  <!-- 2. 发起挂单区域 -->
+  <div class="card">
+    <h3 class="section-title">2. 创建新挂单 (OfferCreate)</h3>
+    
+    <div class="form-group">
+      <label>发行方地址 (Issuer Address)：</label>
+      <input type="text" id="issuerAddress" value="rMRH8W4c7BF4A77EPMxhiRFtt9q8DGo427">
+    </div>
+
+    <div class="form-group">
+      <label>代币代码 (Currency Code)：</label>
+      <input type="text" id="currencyCode" value="RLJPY">
+    </div>
+
+    <div class="form-group">
+      <div class="radio-group">
+        <label class="radio-label" style="color: #dc3545;">
+          <input type="radio" name="tradeType" value="sell" onchange="updateUI(true)"> 🔴 卖出代币 (获得 XRP)
+        </label>
+        <label class="radio-label" style="color: #28a745;">
+          <input type="radio" name="tradeType" value="buy" checked onchange="updateUI(true)"> 🟢 买入代币 (支付 XRP)
+        </label>
+      </div>
+    </div>
+
+    <div class="form-row">
+      <div class="form-group form-col">
+        <label id="lblToken">买入代币数量 (你想要的)：</label>
+        <input type="number" step="any" id="tokenAmount" value="400000000">
+      </div>
+      <div class="form-group form-col">
+        <label id="lblXrp">准备支付 XRP 数量 (你付出的)：</label>
+        <input type="number" step="any" id="xrpAmount" value="1">
+      </div>
+    </div>
+
+    <button id="startBtn" class="btn-buy" onclick="startProcess()">🟢 提交【买入】挂单</button>
+  </div>
+
+  <!-- 3. 控制台日志 -->
+  <div class="card">
+    <h3 class="section-title">3. 操作日志台</h3>
+    <div id="console-output">等待填写配置并开始操作...<br></div>
+  </div>
+
+  <!-- 4. 查询与管理挂单区域 -->
+  <div class="card">
+    <h3 class="section-title">4. 我的未成交挂单管理 (Query & Cancel)</h3>
+    <p style="font-size: 14px; color: #555; margin-bottom: 10px;">点击下方按钮可链上查询当前钱包所有挂在盘口里的单子：</p>
+    <button class="btn-query" onclick="queryMyOffers()">🔍 查询我的所有挂单</button>
+    
+    <div id="offersResultContainer" style="overflow-x:auto;">
+      <!-- 动态生成的挂单表格会在这里显示 -->
+    </div>
+  </div>
+
+  <script>
+    // --- 界面交互：根据买卖方向动态更新提示语、按钮颜色与默认数值 ---
+    function updateUI(isUserClick = false) {
+      const isSell = document.querySelector('input[name="tradeType"]:checked').value === 'sell';
+      const lblToken = document.getElementById('lblToken');
+      const lblXrp = document.getElementById('lblXrp');
+      const startBtn = document.getElementById('startBtn');
+      const tokenInput = document.getElementById('tokenAmount');
+      const xrpInput = document.getElementById('xrpAmount');
+
+      if (isSell) {
+        lblToken.textContent = "卖出代币数量 (你付出的)：";
+        lblXrp.textContent = "期望获得 XRP 数量 (你想要的)：";
+        startBtn.textContent = "🔴 提交【卖出】挂单";
+        startBtn.className = "btn-sell";
+        if (isUserClick) {
+          tokenInput.value = "500000000"; // 5亿
+          xrpInput.value = "1";
+        }
+      } else {
+        lblToken.textContent = "买入代币数量 (你想要的)：";
+        lblXrp.textContent = "准备支付 XRP 数量 (你付出的)：";
+        startBtn.textContent = "🟢 提交【买入】挂单";
+        startBtn.className = "btn-buy";
+        if (isUserClick) {
+          tokenInput.value = "400000000"; // 4亿
+          xrpInput.value = "1";
+        }
+      }
+    }
+    
+    // 初始化执行（不覆盖HTML里写的初始数字）
+    window.onload = () => updateUI(false); 
+
+    const logContainer = document.getElementById('console-output');
+    function logToScreen(message, isError = false) {
+      const line = document.createElement('div');
+      line.style.color = isError ? '#ff4d4d' : '#00ff00';
+      line.textContent = message;
+      logContainer.appendChild(line);
+      logContainer.scrollTop = logContainer.scrollHeight;
+      if (isError) { console.error(message); } else { console.log(message); }
+    }
+
+    function formatCurrencyCode(code) {
+      if (code.length === 3) return code;
+      let hex = '';
+      for (let i = 0; i < code.length; i++) {
+        hex += code.charCodeAt(i).toString(16).padStart(2, '0');
+      }
+      return hex.toUpperCase().padEnd(40, "0");
+    }
+
+    // 解析十六进制代币代码为可读文本
+    function hexToString(hex) {
+      if (!hex || hex.length !== 40) return hex;
+      let str = '';
+      for (let i = 0; i < hex.length; i += 2) {
+        let part = parseInt(hex.substr(i, 2), 16);
+        if (part !== 0) str += String.fromCharCode(part);
+      }
+      return str.trim();
+    }
+
+    // 数值格式化：去除科学计数法，加千分位并保留两位小数
+    function formatNumber(val) {
+      let num = parseFloat(val);
+      if (isNaN(num)) return val;
+      return num.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    }
+
+    // --- 主挂单逻辑 ---
+    async function placeOffer() {
+      const treasuryMnemonic = document.getElementById("treasuryMnemonic").value.trim();
+      const issuerAddress = document.getElementById("issuerAddress").value.trim();
+      const rawCurrency = document.getElementById("currencyCode").value.trim();
+      const tokenAmount = document.getElementById("tokenAmount").value.trim();
+      const xrpAmount = document.getElementById("xrpAmount").value.trim();
+      const tradeType = document.querySelector('input[name="tradeType"]:checked').value;
+
+      if (!treasuryMnemonic || !issuerAddress || !rawCurrency || !tokenAmount || !xrpAmount) {
+        alert("请完整填写所有参数！");
+        return;
+      }
+
+      const btn = document.getElementById('startBtn');
+      btn.disabled = true;
+      const originalBtnText = btn.textContent;
+      btn.textContent = "正在提交挂单，请稍候...";
+      logContainer.innerHTML = ""; 
+      
+      const MAINNET_URL = "wss://xrplcluster.com"; 
+      const client = new xrpl.Client(MAINNET_URL);
+      
+      try {
+        logToScreen("正在组装钱包实例...");
+        const wallet = xrpl.Wallet.fromMnemonic(treasuryMnemonic, { 
+          derivationPath: "m/44'/144'/0'/0/0" 
+        });
+
+        logToScreen("正在连接到 XRPL 主网节点...");
+        await client.connect();
+        logToScreen("🔗 已成功连接到 XRPL 主网\n");
+
+        logToScreen(`【挂单信息确认】`);
+        logToScreen(`操作钱包: ${wallet.address}`);
+        logToScreen(`代币发行方: ${issuerAddress}`);
+        
+        const currencyHex = formatCurrencyCode(rawCurrency);
+        const price = (parseFloat(xrpAmount) / parseFloat(tokenAmount)).toFixed(8);
+        
+        const tokenObject = {
+          currency: currencyHex,
+          issuer: issuerAddress,
+          value: tokenAmount,
+        };
+        const xrpDrops = xrpl.xrpToDrops(xrpAmount);
+        
+        let takerGets, takerPays;
+        if (tradeType === 'sell') {
+          logToScreen(`>>> 操作方向: 🔴 卖出 ${rawCurrency}`);
+          takerGets = tokenObject;
+          takerPays = xrpDrops;
+        } else {
+          logToScreen(`>>> 操作方向: 🟢 买入 ${rawCurrency}`);
+          takerGets = xrpDrops;
+          takerPays = tokenObject;
+        }
+        
+        logToScreen(`挂单单价约: ${price} XRP / Token\n`);
+
+        const offerTx = {
+          TransactionType: "OfferCreate",
+          Account: wallet.address,
+          TakerGets: takerGets,
+          TakerPays: takerPays,
+        };
+
+        logToScreen("正在签名并广播交易...");
+        const prepared = await client.autofill(offerTx);
+        const signed = wallet.sign(prepared);
+        const response = await client.submitAndWait(signed.tx_blob);
+
+        const txCode = response.result.meta.TransactionResult;
+        if (txCode === "tesSUCCESS") {
+          logToScreen(`\n🎉🎉🎉 挂单成功！`);
+          logToScreen(`交易 Hash: ${response.result.hash}`);
+          queryMyOffers();
+        } else {
+          logToScreen(`❌ 挂单失败，链上返回代码: ${txCode}`, true);
+        }
+
+      } catch (error) {
+        logToScreen(`执行过程出错: ${error.message}`, true);
+      } finally {
+        await client.disconnect();
+        logToScreen("\n🔌 已断开主网连接");
+        btn.disabled = false;
+        btn.textContent = originalBtnText;
+      }
+    }
+
+    // --- 查询挂单逻辑 (account_offers) ---
+    async function queryMyOffers() {
+      const treasuryMnemonic = document.getElementById("treasuryMnemonic").value.trim();
+      if (!treasuryMnemonic) {
+        alert("请先在上方的【操作钱包】中输入助记词！");
+        return;
+      }
+
+      const container = document.getElementById('offersResultContainer');
+      container.innerHTML = "<p style='color:#666; padding:10px;'>正在向主网查询挂单数据...</p>";
+      logContainer.innerHTML = "";
+
+      const MAINNET_URL = "wss://xrplcluster.com";
+      const client = new xrpl.Client(MAINNET_URL);
+
+      try {
+        const wallet = xrpl.Wallet.fromMnemonic(treasuryMnemonic, { 
+          derivationPath: "m/44'/144'/0'/0/0" 
+        });
+
+        await client.connect();
+        logToScreen(`正在查询地址 ${wallet.address} 的所有未成交挂单...`);
+
+        const response = await client.request({
+          command: "account_offers",
+          account: wallet.address
+        });
+
+        const offers = response.result.offers;
+        if (!offers || offers.length === 0) {
+          container.innerHTML = "<p style='color:#666; padding:10px;'>当前钱包没有找到任何未成交的挂单。</p>";
+          logToScreen("查询完成：暂无未成交挂单。");
+          return;
+        }
+
+        logToScreen(`成功找到 ${offers.length} 条挂单记录。`);
+
+        let html = `
+          <table class="offers-table">
+            <thead>
+              <tr>
+                <th>序号 (Sequence)</th>
+                <th>类型</th>
+                <th>付出 (TakerGets)</th>
+                <th>得到 (TakerPays)</th>
+                <th>操作</th>
+              </tr>
+            </thead>
+            <tbody>
+        `;
+
+        offers.forEach(offer => {
+          let getsDesc = typeof offer.taker_gets === 'string' 
+            ? formatNumber(parseInt(offer.taker_gets) / 1000000) + " XRP"
+            : `${formatNumber(offer.taker_gets.value)} (${hexToString(offer.taker_gets.currency)})`;
+
+          let paysDesc = typeof offer.taker_pays === 'string' 
+            ? formatNumber(parseInt(offer.taker_pays) / 1000000) + " XRP"
+            : `${formatNumber(offer.taker_pays.value)} (${hexToString(offer.taker_pays.currency)})`;
+
+          let isSell = typeof offer.taker_gets === 'object'; 
+          let typeBadge = isSell ? "<span style='color:red;'>🔴 卖单</span>" : "<span style='color:green;'>🟢 买单</span>";
+
+          html += `
+            <tr>
+              <td><strong>${offer.seq}</strong></td>
+              <td>${typeBadge}</td>
+              <td>${getsDesc}</td>
+              <td>${paysDesc}</td>
+              <td><button class="btn-cancel" onclick="cancelSpecificOffer(${offer.seq})">❌ 取消此单</button></td>
+            </tr>
+          `;
+        });
+
+        html += `</tbody></table>`;
+        container.innerHTML = html;
+
+      } catch (error) {
+        container.innerHTML = `<p style='color:red; padding:10px;'>查询失败: ${error.message}</p>`;
+        logToScreen(`查询挂单出错: ${error.message}`, true);
+      } finally {
+        await client.disconnect();
+      }
+    }
+
+    // --- 取消特定挂单逻辑 (OfferCancel) ---
+    async function cancelSpecificOffer(sequence) {
+      const treasuryMnemonic = document.getElementById("treasuryMnemonic").value.trim();
+      if (!treasuryMnemonic) {
+        alert("请先填写助记词！");
+        return;
+      }
+
+      if (!confirm(`确定要取消序列号为 [ ${sequence} ] 的挂单吗？取消后会释放对应的储备金。`)) {
+        return;
+      }
+
+      logContainer.innerHTML = "";
+      const MAINNET_URL = "wss://xrplcluster.com";
+      const client = new xrpl.Client(MAINNET_URL);
+
+      try {
+        const wallet = xrpl.Wallet.fromMnemonic(treasuryMnemonic, { 
+          derivationPath: "m/44'/144'/0'/0/0" 
+        });
+
+        await client.connect();
+        logToScreen(`正在构建撤单交易 (OfferCancel), 目标序号: ${sequence}...`);
+
+        const cancelTx = {
+          TransactionType: "OfferCancel",
+          Account: wallet.address,
+          OfferSequence: sequence
+        };
+
+        const prepared = await client.autofill(cancelTx);
+        const signed = wallet.sign(prepared);
+        const response = await client.submitAndWait(signed.tx_blob);
+
+        const txCode = response.result.meta.TransactionResult;
+        if (txCode === "tesSUCCESS") {
+          logToScreen(`\n🎉🎉🎉 成功取消挂单！`);
+          logToScreen(`交易 Hash: ${response.result.hash}`);
+          queryMyOffers();
+        } else {
+          logToScreen(`❌ 取消挂单失败，链上返回代码: ${txCode}`, true);
+        }
+
+      } catch (error) {
+        logToScreen(`取消过程出错: ${error.message}`, true);
+      } finally {
+        await client.disconnect();
+      }
+    }
+
+    function startProcess() {
+      placeOffer();
+    }
+  </script>
+</body>
+</html>
