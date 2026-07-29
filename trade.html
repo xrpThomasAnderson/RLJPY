@@ -363,7 +363,7 @@
         logToScreen(`代币发行方: ${issuerAddress}`);
         
         const currencyHex = formatCurrencyCode(rawCurrency);
-        const price = (parseFloat(xrpAmount) / parseFloat(tokenAmount)).toFixed(8);
+        const price = (parseFloat(xrpAmount) / parseFloat(tokenAmount)).toFixed(14);
         
         const tokenObject = {
           currency: currencyHex,
