@@ -401,7 +401,7 @@
         if (txCode === "tesSUCCESS") {
           logToScreen(`\n🎉🎉🎉 挂单成功！`);
           logToScreen(`交易 Hash: ${response.result.hash}`);
-          queryMyOffers();
+          // queryMyOffers();
         } else {
           logToScreen(`❌ 挂单失败，链上返回代码: ${txCode}`, true);
         }
