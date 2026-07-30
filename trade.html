@@ -401,6 +401,7 @@
         if (txCode === "tesSUCCESS") {
           logToScreen(`\n🎉🎉🎉 挂单成功！`);
           logToScreen(`交易 Hash: ${response.result.hash}`);
+          logToScreen(`浏览器查看: https://livenet.xrpl.org/transactions/${response.result.hash}`);
           // queryMyOffers();
         } else {
           logToScreen(`❌ 挂单失败，链上返回代码: ${txCode}`, true);
