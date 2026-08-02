@@ -4,6 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RLJPY订单簿</title>
+  <!-- 1. 在 head 中提前发起请求，返回完整的 JSON 对象 -->
+  <script>
+        const AppConfigPromise = fetch('https://xrpthomasanderson.github.io/RLJPY/config.json')
+            .then(res => {
+                if (!res.ok) throw new Error("加载 config.json 失败");
+                return res.json(); // 返回完整的 JSON 对象
+            })
+            .catch(err => {
+                console.warn("加载配置文件失败，启用后备默认配置:", err);
+                // 必须返回一个对象，包含所有你后续可能会用到的字段，防止报错
+                return {
+                    xrplNode: "wss://xrplcluster.com"
+                    // 其他你需要的字段也可以写在这里
+                };
+            });
+  </script>
   <script src="https://unpkg.com/xrpl@2.14.0/build/xrpl-latest-min.js" integrity="sha384-J7PqxLCqaHM/pbIDWeW/yXzoVfDsXFxA6Y1uyZ9dQBN1OJ2OCDVcxa82moQX9ecX" crossorigin="anonymous"></script>
   <style>
     * {
@@ -305,7 +321,9 @@
       });
 
       const currencyHex = formatCurrencyCode(rawCurrency);
-      const client = new xrpl.Client("wss://xrplcluster.com");
+      // 等待 Promise 解析完成，拿到完整的 config 对象
+      const config = await AppConfigPromise;
+      const client = new xrpl.Client(config.xrplNode);
       
       try {
         await client.connect();
