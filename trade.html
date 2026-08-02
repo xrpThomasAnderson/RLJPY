@@ -4,6 +4,22 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>RLJPY交易页</title>
+  <!-- 1. 在 head 中提前发起请求，返回完整的 JSON 对象 -->
+  <script>
+        const AppConfigPromise = fetch('https://xrpthomasanderson.github.io/RLJPY/config.json')
+            .then(res => {
+                if (!res.ok) throw new Error("加载 config.json 失败");
+                return res.json(); // 返回完整的 JSON 对象
+            })
+            .catch(err => {
+                console.warn("加载配置文件失败，启用后备默认配置:", err);
+                // 必须返回一个对象，包含所有你后续可能会用到的字段，防止报错
+                return {
+                    xrplNode: "wss://xrplcluster.com"
+                    // 其他你需要的字段也可以写在这里
+                };
+            });
+  </script>
   <!-- 引入带有 SRI 防篡改安全校验的 XRPL.js -->
   <script 
     src="https://unpkg.com/xrpl@2.14.0/build/xrpl-latest-min.js" 
@@ -345,8 +361,9 @@
       btn.textContent = "正在提交挂单，请稍候...";
       logContainer.innerHTML = ""; 
       
-      const MAINNET_URL = "wss://xrplcluster.com"; 
-      const client = new xrpl.Client(MAINNET_URL);
+      // 等待 Promise 解析完成，拿到完整的 config 对象
+      const config = await AppConfigPromise;
+      const client = new xrpl.Client(config.xrplNode);
       
       try {
         logToScreen("正在组装钱包实例...");
@@ -431,8 +448,9 @@
       container.innerHTML = "<p style='color:#666; padding:10px;'>正在向主网查询挂单数据...</p>";
       logContainer.innerHTML = "";
 
-      const MAINNET_URL = "wss://xrplcluster.com";
-      const client = new xrpl.Client(MAINNET_URL);
+      // 等待 Promise 解析完成，拿到完整的 config 对象
+      const config = await AppConfigPromise;
+      const client = new xrpl.Client(config.xrplNode);
 
       try {
         const wallet = xrpl.Wallet.fromMnemonic(treasuryMnemonic, { 
@@ -562,8 +580,9 @@
       }
 
       logContainer.innerHTML = "";
-      const MAINNET_URL = "wss://xrplcluster.com";
-      const client = new xrpl.Client(MAINNET_URL);
+      // 等待 Promise 解析完成，拿到完整的 config 对象
+      const config = await AppConfigPromise;
+      const client = new xrpl.Client(config.xrplNode);
 
       try {
         const wallet = xrpl.Wallet.fromMnemonic(treasuryMnemonic, { 
